@@ -1,0 +1,29 @@
+[build-system]
+requires = [
+    "setuptools>=61",
+    "setuptools_scm[toml]>=6.2",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gax25-utils"
+description = "python-based ham-radio / ax25 utilities built on the gensio ax25 stack."
+authors = [
+    {name = "Masen Furer KF7HVM", email = "kf7hvm@0x26.net"},
+]
+dependencies = [
+    "gensio >= 2.5.3",
+]
+readme = "README.md"
+classifiers = [
+]
+keywords=[
+    'Ham Radio', 'KISS', "AX.25"
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/masenf/gax25-utils"
+
+[tool.setuptools_scm]
