@@ -9,6 +9,7 @@ AX.25 transport.
 import array
 import argparse
 import logging
+import re
 import shlex
 import subprocess
 import sys
@@ -19,6 +20,8 @@ import gensio
 # python-native logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("gaxproxy")
+
+CRED_PROMPTS = [b"Callsign:\r\n", b"Password:\r\n"]
 
 
 class GensioLogger:
@@ -32,13 +35,19 @@ gensio.gensio_set_log_mask(gensio.GENSIO_LOG_MASK_ALL)
 o = gensio.alloc_gensio_selector(GensioLogger())
 
 
+def replace_positional(endpoint, *args):
+    for ix, val in enumerate(args):
+        endpoint = endpoint.replace(f"%{ix}", val)
+    return endpoint
+
+
 def spawn_for(ioev, endpoint):
     logger.info(f"spawning {endpoint}")
     return gensio.gensio(o, endpoint, ioev)
 
 
 class IOEvent:
-    def __init__(self, accev, require_creds=True):
+    def __init__(self, accev, require_creds=1):
         self.accev = accev
         self._io = None  # the "listener" end, typically telnet connection
         self._io2 = None  # established on demand to make an ax25 connection
@@ -47,10 +56,13 @@ class IOEvent:
         # io writes from bufB and io2 reads into bufB
         self.bufB = array.array("B")
         self.in_close = False  # true if either gensio is down or going down
-        self.creds_received = not require_creds
+        self.require_creds = require_creds
         self.creds = []
-        if not self.creds_received:
-            self.bufB.extend(b"Username\r\nPassword\r\n")
+        if self.require_creds == 1:
+            # the "Password"-only style
+            self.bufB.extend(CRED_PROMPTS[1])
+        elif self.require_creds:
+            self.bufB.extend(CRED_PROMPTS[0])
 
     @property
     def io(self):
@@ -87,6 +99,7 @@ class IOEvent:
 
     def close(self, io):
         self.in_close = True
+        # with in_close=True, write_callback will close io after buffer is drained
         self.io.write_cb_enable(True)
         self.io2.write_cb_enable(True)
         io.close(self)
@@ -107,19 +120,17 @@ class IOEvent:
             return 0
         if data:
             self.log_for(io, "read_callback: data=%r", data)
-            if io.same_as(self.io) and not self.creds_received:
-                # handle credentials in a bad way...
-                # use the password as an input, like what gateway to connect to
-                if not self.creds:
-                    self.creds.append(data.decode("utf-8").strip())
-                    self.creds_received = True
+            if len(self.creds) < self.require_creds and io.same_as(self.io):
+                self.creds.append(data.decode("utf-8").strip())
+                if len(self.creds) < self.require_creds:
+                    self.bufB.extend(CRED_PROMPTS[len(self.creds) % len(CRED_PROMPTS)])
             else:
                 self.get_read_buffer(io).extend(data)
-        if self.creds_received and not self.in_close and self.io2 is None:
+        if self.io2 is None and len(self.creds) >= self.require_creds and not self.in_close:
             # once creds are received, spawn and connect the second endpoint
             self.io2 = spawn_for(
                 ioev=self,
-                endpoint=self.accev.endpoint.replace("%P", self.creds[0]),
+                endpoint=replace_positional(self.accev.endpoint, *self.creds),
             )
             self.io2.open(self)
         if self.bufA:
@@ -157,7 +168,6 @@ class IOEvent:
     def open_done(self, io, err):
         if err:
             self.log_for(io, "open error: %s", err)
-            io.close(self)
             if self.io is not None:
                 self.io.close(self)
             if self.io2 is not None:
@@ -178,10 +188,11 @@ class IOEvent:
 
 
 class AccEvent:
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, require_creds):
         self.ios = []
         self.waiter = gensio.waiter(o)
         self.endpoint = endpoint
+        self.require_creds = require_creds
         self.in_shutdown = False
 
     def log(self, acc, level, logval):
@@ -191,7 +202,7 @@ class AccEvent:
         if self.in_shutdown:
             # it will free automatically
             return
-        ioev = IOEvent(self)
+        ioev = IOEvent(self, require_creds=self.require_creds)
         logger.info("accepted new connection: %r", io)
         ioev.io = io
         self.ios.append(ioev)
@@ -232,13 +243,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--mycall", help="my callsign")
     parser.add_argument(
+        "--ax25-conf",
+        default="extended=0,retries=2",
+        help="parameters passed to gensio ax25 module",
+    )
+    parser.add_argument(
         "-l", "--listen", default="tcp,localhost,8772", help="gensio spec to listen on"
     )
     parser.add_argument(
+        "--require-creds", default=1, help="Prompt for 'credentials' on listener (can be replaced as %%n in --gateway")
+    parser.add_argument(
         "-g",
         "--gateway",
-        default="%P",
-        help="gateway callsign to connect to; defaults to the provided password",
+        default="%0",
+        help="gateway callsign to connect to; defaults to the provided 'password'",
     )
     parser.add_argument(
         "-k",
@@ -248,12 +266,13 @@ def main():
     )
     args = parser.parse_args()
 
-    accev = AccEvent(
-        endpoint=f"ax25(laddr={args.mycall},"
-        f'addr="0,{args.gateway},{args.mycall}",'
-        "extended=0),"
-        f"kiss,{args.kiss}"
-    )
+    endpoint_conf = args.ax25_conf
+    if not re.search(r"\bladder=", endpoint_conf):
+        endpoint_conf = f"laddr={args.mycall}," + endpoint_conf
+    if not re.search(r"\badder=", endpoint_conf):
+        endpoint_conf = f'addr="0,{args.gateway},{args.mycall}",' + endpoint_conf
+
+    accev = AccEvent(endpoint=f"ax25({endpoint_conf}),kiss,{args.kiss}", require_creds=int(args.require_creds))
     accev.acc = gensio.gensio_accepter(o, args.listen, accev)
     accev.acc.startup()
     accev.wait()

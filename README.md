@@ -32,6 +32,24 @@ gateway software.
 python -m gax25.listen -l KF7HVM-10 -k tcp,localhost,8011 /usr/local/bin/rmsgw -l debug -P radio2 %U
 ```
 
+#### _as a service_
+
+```
+Description="Service for gensio rmsgw"
+After=direwolf@dw1.service
+BindsTo=direwolf@dw1.service
+
+[Service]
+RestartSec=5
+Restart=always
+User=rmsgw
+ExecStart=/home/rmsgw/.gensio/bin/python -m gax25.listen -l N7DEM-12 \
+    /usr/local/bin/rmsgw -l debug -P dw1 %%0
+
+[Install]
+WantedBy=direwolf@dw1.service multi-user.target
+```
+
 compat note: traditionally, `-P` would have referred to an ax25 port name, but
 it _really_ only points to a channel name in `rmsgw` `channels.xml` file.
 
