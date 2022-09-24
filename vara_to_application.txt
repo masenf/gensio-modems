@@ -1,0 +1,100 @@
+# Application to VARA
+
+CONNECT Source Destination<cr> (VARA HF and (VARA SAT)
+CONNECT Source Destination via Digi1 Digi2<cr> (VARA FM)
+LISTEN ON<cr>
+Incomming connections enabled.
+This command will cause a disconnection if it is received in the middle of a VARA connection
+LISTEN OFF<cr> (by default)
+Incomming connections disabled
+This command will cause a disconnection if it is received in the middle of a VARA connection
+MYCALL Call1 Call2 Call3 Call4 Call5<cr>
+Set current call sign (maximum 5 call signs). Legitimate call signs include from 3 to 7 ASCII
+characters (A-Z, 0-9) followed by an optional “-“ and an SSID of -1 to -15, -T, and -R.
+DISCONNECT<cr>
+Disconnect the link, once the TX buffer is empty.
+ABORT<cr>
+Disconnect the link inmediately. (dirty disconnect)
+COMPRESSION OFF<cr>
+Compression disabled
+COMPRESSION TEXT<cr> (by default)
+Huffman compression enabled, designed for type text information. Recommended for Winlink.
+COMPRESSION FILES<cr>
+Compression designed for File transfers
+BW500<cr> (VARA HF)
+Set VARA HF to 500Hz Narrow mode
+BW2300<cr> (VARA HF) (by default)
+Set VARA HF to 2300Hz Standard mode
+BW2750<cr> (VARA HF)
+Set VARA HF to 2750Hz Tactical mode
+CHAT ON<cr>
+Optimizes VARA timing for using with chat type apps like VARA Chat, VarAC, vARIM ....
+Listen then CQ Frames
+Support high latency to connect two FlexRadio: SDR<->SDR
+Infinite Idle loop. Allows both stations to be in sync forever, until the path dies
+Send the SN command for each data block received.
+Optimize the handover interchange for keyboard to keyboard.
+This command should not be used with Winlink or B2F protocol apps.
+Includes the LISTEN ON command
+CHAT OFF<cr>
+Optimize the handover interchange for Winlink, B2F protocol, BBS, etc...
+Limited Idle Loops. Avoid the stations stay connected forever in a loop.
+Latency limited according Trimode Scan time of 4 seconds. Only one Flexradio can be used in
+the link: SDR<->Analog Rig or Analog Rig<->SDR
+CQFRAME Source BW<cr> (VARA HF)
+CQFRAME Source<cr> (VARA SAT)
+CQFRAME Source Digi1 Digi2 <cr> (VARA FM)
+Send a CQ frame. Useful for type chat apps.
+WINLINK SESSION<cr> (By default) (VARA HF and VARA SAT only)
+VARA send retries following a 4.0 seconds cycle, necessary to connect with the RMS Gateways
+(DWELL time 4s)
+P2P SESSION<cr> (VARA HF and VARA SAT only)
+Set the retrie cycle to 4.6 seconds to allow connecting two SDR's at maximum late
+
+# VARA to Application
+
+
+CONNECTED Source Destination BW<cr> (VARA HF)
+CONNECTED Source Destination <cr> (VARA SAT)
+CONNECTED Source Destination via Digi1 Digi2 BW<cr> (VARA FM)
+DISCONNECTED<cr>
+Session closed by either end
+PTT OFF<cr>
+Order for switching PTT OFF
+PTT ON<cr>
+Order for switching PTT ON
+BUFFER Bytes<cr>
+Reports number of bytes in transmit buffer queue. Sent when VARA adds data to queue or
+VARA removes acked bytes from queue
+PENDING<cr>
+Indicates to the host application a Connect Request has been detected. This provides an early
+warning to the host that a connection may be in process so it can hold any scanning activity.
+CANCELPENDING<cr>
+Indicates to the host that Connect Request could not be completed. This allows the Host to
+resume scanning.
+BUSY OFF<cr>
+Free channel
+BUSY ON<cr>
+Busy channel
+REGISTERED Call<cr>
+Call sign registered in VARA
+LINK REGISTERED<cr>
+The client station is registered in VARA
+LINK UNREGISTERED<cr>
+The client station is not registered in VARA
+IAMALIVE<cr>
+Sent every 60 seconds
+MISSING SOUNDCARD<cr>
+The USB Soundcard driver has crashed (typically due to RF or high SWR on low bands)
+The only way to recovery the driver is restarting the PC. This task is for the external application.
+CQFRAME Source BW<cr> (VARA HF)
+CQFRAME Source<cr> (VARA SAT)
+CQFRAME Source Digi1 Digi2 <cr> (VARA FM)
+A CQ frame have been decoded. Useful for type chat apps.
+SN value<cr>
+S/N of the received frame. This command is sent only if the CHAT ON command is active.
+(Useful for type chat apps only).
+OK<cr>
+Response to a received command
+WRONG<cr>
+Wrong comm
