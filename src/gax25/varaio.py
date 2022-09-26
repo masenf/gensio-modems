@@ -1,3 +1,4 @@
+import array
 import logging
 
 
@@ -9,10 +10,19 @@ class VaraListener:
         self.laddr = laddr
         self.data_port = data_port
         self.spawn = spawn
+        self.connected = None
         self._io = None  # the vara command side of the connection
         self.bufIn = array.array("B")
-        self.bufOut = array.array("B", "\r".join([
-			f"MYCALL {laddr}".encode("utf-8"),
+        # this will be sent on the first `write_callback`
+        self.bufOut = array.array(
+            "B",
+            "\r".join(
+                [
+                    f"MYCALL {laddr}".encode("utf-8"),
+                    "LISTEN ON",
+                ],
+            )
+        )
         self.in_close = False  # true if either gensio is down or going down
 
     @property
@@ -29,6 +39,15 @@ class VaraListener:
         self.in_close = True
         self.io.write_cb_enable(True)
 
+    def dispatch(self, command):
+        """Handle incoming command from VARA modem."""
+        args = command.lower().split()
+        if args[0] == "connected":
+            # Connect the spawn gensio and the VARA data port together
+            pass
+
+
+
     def read_callback(self, io, err, data, auxdata):
         if err:
             if err != "Remote end closed connection":
@@ -37,7 +56,7 @@ class VaraListener:
             return 0
         if data:
             logger.debug("read_callback: data=%r", data)
-            for command in 
+            for command in data.splitlines():
             self.bufIn.extend(data)
         if self.bufOut:
             self.io.write_cb_enable(True)
