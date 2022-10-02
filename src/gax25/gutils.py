@@ -33,6 +33,7 @@ class IOEvent:
     """
 
     def __init__(self):
+        self.logger = logging.getLogger(type(self).__name__)
         self._io = None
         # io reads into bufA
         self.bufA = array.array("B")
@@ -60,13 +61,19 @@ class IOEvent:
         """
         Log a message in the context of the given `io`.
         """
-        logger.log(level, "{} {}".format(self.name_for(io), message), *args, **kwargs)
+        self.logger.log(
+            level, "{} {}".format(self.name_for(io), message), *args, **kwargs
+        )
 
-    def close(self, io):
+    def close(self, io=None):
         self.in_close = True
-        # with in_close=True, write_callback will close io after buffer is drained
-        self.io.write_cb_enable(True)
-        io.close(self)
+        if self.io is not None:
+            # with in_close=True, write_callback will close io after buffer is drained
+            self.io.write_cb_enable(True)
+        # if the caller gave us an IO, close it now
+        if io is not None:
+            # this is the ONLY place to direcly call gensio.close!
+            io.close(self)
 
     def get_read_buffer(self, io):
         if io.same_as(self.io):
@@ -109,13 +116,13 @@ class IOEvent:
         if not buf:
             io.write_cb_enable(False)
             if self.in_close:
-                io.close(self)
+                self.close(io)
 
     def open_done(self, io, err):
         if err:
             self.log_for(io, "open error: %s", err)
             if self.io is not None:
-                self.io.close(self)
+                self.close(io)
             return
         self.log_for(io, "Opened gensio: %s", io)
         io.write_cb_enable(True)
@@ -128,7 +135,8 @@ class IOEvent:
             self.waiter.wake()
 
     def wait(self):
-        self.waiter.wait(1)
+        if self.io is not None:
+            self.waiter.wait(1)
 
 
 class PipeEvent(IOEvent):
@@ -162,9 +170,10 @@ class PipeEvent(IOEvent):
             return "io2"
         return super().name_for(io)
 
-    def close(self, io):
+    def close(self, io=None):
         super().close(io)
-        self.io2.write_cb_enable(True)
+        if self.io2 is not None:
+            self.io2.write_cb_enable(True)
 
     def get_read_buffer(self, io):
         if io.same_as(self.io2):
@@ -185,23 +194,17 @@ class PipeEvent(IOEvent):
     def open_done(self, io, err):
         super().open_done(io, err)
         if err and self.io2 is not None:
-            self.io2.close(self)
+            self.close(self.io2)
             return
 
     def close_done(self, io):
         super().close_done(io, wake_when_closed=False)
         if self.io is None and self.io2 is None:
             self.waiter.wake()
-            # upcall indicating that the pipe is closed on both ends
-            self.both_ends_close_done()
 
-    def both_ends_close_done(self):
-        """
-        Called internally when close_done finds both gensios closed.
-
-        Intended to be overridden by a subclass or monkeypatched on an instance.
-        """
-        pass
+    def wait(self):
+        if self.io is not None or self.io2 is not None:
+            self.waiter.wait(1)
 
 
 class ListenerEvent:
@@ -215,13 +218,14 @@ class ListenerEvent:
     """
 
     def __init__(self):
+        self.logger = logging.getLogger(type(self).__name__)
         self.acc = None
         self.ios = []
         self.waiter = gensio.waiter(OSFUNCS)
         self.in_shutdown = False
 
     def log(self, acc, level, logval):
-        logger.error("gensio acc %s err: %s", level, logval)
+        self.logger.error("gensio acc %s err: %s", level, logval)
 
     def new_connection(self, acc, io):
         if self.in_shutdown:
@@ -243,7 +247,7 @@ class ListenerEvent:
             if saved_io.same_as(io):
                 break
         else:
-            logger.warning("untracked connection closed: %r", io)
+            self.logger.warning("untracked connection closed: %r", io)
             idx = None
         if idx is not None:
             del self.ios[idx]
@@ -262,7 +266,8 @@ class ListenerEvent:
             i.close_s()
 
     def wait(self):
-        self.waiter.wait(1)
+        if self.acc is not None:
+            self.waiter.wait(1)
 
 
 INIT_DONE = False
