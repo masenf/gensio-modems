@@ -123,6 +123,9 @@ class IOEvent:
             self.log_for(io, "open error: %s", err)
             if self.io is not None:
                 self.close(io)
+                # normally io would be reset in close_done, but that wont
+                # get called if the gensio failed to open
+                self.io = None
             return
         self.log_for(io, "Opened gensio: %s", io)
         io.write_cb_enable(True)
@@ -195,6 +198,7 @@ class PipeEvent(IOEvent):
         super().open_done(io, err)
         if err and self.io2 is not None:
             self.close(self.io2)
+            self.io2 = None
             return
 
     def close_done(self, io):

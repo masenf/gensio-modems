@@ -8,6 +8,7 @@ import time
 import gensio
 
 from .gutils import IOEvent, PipeEvent, OSFUNCS
+from .rmsgw import RMSGatewayLogin
 
 
 logger = logging.getLogger("vara")
@@ -33,13 +34,13 @@ class VaraPipeEvent(PipeEvent):
 
     def reset_channel(self):
         # clean up any buffer remnants
-        self.bufB[:] = self.bufB[1:0]
+        buf = self.bufA  # io2 writes from bufA
+        buf[:] = buf[1:0]
         self.in_close = False
 
     def graceful_disconnect(self):
         self.vara_control.execute("DISCONNECT")
-        # wait until VARA acknowledges the disconnect before closing
-        # the data socket
+        # wait until VARA acknowledges the disconnect
         abort = time.time() + (WAIT_FOR_DISCONNECT * 0.9)
         expire = time.time() + WAIT_FOR_DISCONNECT
         while True:
@@ -62,70 +63,34 @@ class VaraPipeEvent(PipeEvent):
                     self.logger.exception("Unhandled Exception in graceful_disconnect")
             if not self.vara_control.in_shutdown:
                 # Note: we do NOT want to close the VARA side of the data connection
-                # until we're disconnecting the control side as well.
+                #       until we're shutting down the control side as well.
                 return
         super().close(io)
 
 
-class RMSPipeEvent(VaraPipeEvent):
-    def _handle_login(self, io, err, data):
-        if (
-            getattr(self, "_cms_logged_in", False)
-            or not data
-            or err
-            or not io.same_as(self.rms_io)
-        ):
-            return
-
-        ldata = data.strip().lower()
-        send_line = None
-        if ldata.startswith(b"callsign"):
-            send_line = b"%s\r\n" % self.callsign
-        elif ldata.startswith(b"password"):
-            send_line = b"%s\r\n" % self.password
-            self._cms_logged_in = True
-        if send_line is not None:
-            self.logger.info("_handle_login: data={}".format(ldata))
-            self.get_write_buffer(io).extend(send_line)
-            io.write_cb_enable(True)
-            return True
-
-    def read_callback(self, io, err, data, auxdata):
-        if self._handle_login(io, err, data):
-            return len(data)
-        return super().read_callback(io, err, data, auxdata)
-
+class VaraRMSPipeEvent(RMSGatewayLogin, VaraPipeEvent):
     @property
     def callsign(self):
-        #return b"N0CALL"
         return self.vara_control.laddr.partition("-")[0].encode("utf-8")
 
-    @property
-    def password(self):
-        return b"CMSTelnet"
 
-    @property
-    def rms_io(self):
-        return self.io2
-
-    def close(self, io=None):
-        if io and io.same_as(self.rms_io):
-            self._cms_logged_in = False
-
-
-DEFAULT_DATA_PORT = "tcp,localhost,8301"
 DEFAULT_SPAWN = "stdio(self)"
 
 
 class VaraControlEvent(IOEvent):
-    def __init__(self, laddr, data_port=None, spawn=None):
+    def __init__(self, laddr, data_port, spawn=None, banner=None, rms=False):
         super().__init__()
         self.laddr = laddr
-        self.data_port = data_port or DEFAULT_DATA_PORT
+        self.data_port = data_port
         self.spawn = spawn or DEFAULT_SPAWN
+        self.banner = banner
         self.connected = None
         self.in_shutdown = False
-        self.data_pipe = self.establish_data_connection()
+        if rms:
+            pipe = VaraRMSPipeEvent
+        else:
+            pipe = VaraPipeEvent
+        self.data_pipe = self.establish_data_connection(pipe=pipe)
         # this will be sent on the first `write_callback`
         self.bufB[:] = array.array(
             "B",
@@ -138,14 +103,14 @@ class VaraControlEvent(IOEvent):
         )
 
     @classmethod
-    def from_gensio_str(cls, gensio_str, laddr, data_port, spawn=None):
-        vc = cls(laddr=laddr, data_port=data_port, spawn=spawn)
+    def from_gensio_str(cls, gensio_str, **kwargs):
+        vc = cls(**kwargs)
         vc.io = gensio.gensio(OSFUNCS, gensio_str, vc)
         vc.io.open(vc)
         return vc
 
-    def establish_data_connection(self):
-        data_pipe = RMSPipeEvent(vara_control=self)
+    def establish_data_connection(self, pipe=VaraPipeEvent):
+        data_pipe = pipe(vara_control=self)
         data_pipe.io = gensio.gensio(
             OSFUNCS,
             self.data_port,
@@ -171,15 +136,8 @@ class VaraControlEvent(IOEvent):
                 self.log_for(self.io, f"Connection failed", exc_info=True)
                 self.data_pipe.close_channel()
                 return
-            # log in to RMS
-            #self.data_pipe.bufA.extend(
-            #    b"\r\n".join(
-            #        [
-            #            self.laddr.partition("-")[0].encode("utf-8"),
-            #            b"CMSTelnet",
-            #        ]
-            #    )
-            #)
+            if self.banner is not None:
+                self.data_pipe.bufB.extend(f"{self.banner}\r\n".encode("utf-8"))
             self.log_for(self.io, f"Connected: s:{source} -> d:{destination}")
         elif command == "disconnected":
             disconnected_from = self.connected
@@ -224,6 +182,9 @@ class VaraControlEvent(IOEvent):
     def read_callback(self, io, err, data, auxdata):
         data_len = super().read_callback(io, err, data, auxdata)
         if err:
+            return data_len
+        if self.data_pipe.io is None:
+            self.close()
             return data_len
         readBuf = self.get_read_buffer(io)
         if readBuf:
