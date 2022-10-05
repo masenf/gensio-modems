@@ -21,6 +21,14 @@ alternatively, if you don't want a virtualenv,
 pip install --user -i https://test.pypi.org/simple/ gax25-utils
 ```
 
+## `varagate.py`
+
+RMS/Winlink capable gateway for VARA and VARA FM
+
+```
+python examples/varagate.py -l KF7HVM-10 --banner "gensio+vara experimental rms gateway" --gateway "rms,tcp,cms.winlink.org,8772"
+```
+
 ## `listen.py`
 
 a simple ax25-to-program proxy, useful for passing off to BBS or
