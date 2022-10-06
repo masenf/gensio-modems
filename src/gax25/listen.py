@@ -12,6 +12,8 @@ import sys
 
 import gensio
 
+from .rmsgw import RMSGatewayLogin
+
 
 # python-native logging
 logging.basicConfig(level=logging.DEBUG)
@@ -62,15 +64,16 @@ DEFAULT_FILTER = "xlt(lfcr)"
 
 
 def spawn_for(ioev, command, g_filter=None, stderr=False):
-    g_string = "stdio(self)"
-    if command:
-        sh_cmd = ax25_command_substitution(ioev.io, shlex.join(command))
-        logger.info("spawn: {}".format(sh_cmd))
-        g_string = ("stdio(stderr-to-stdout)," if stderr else "stdio,") + sh_cmd
+    g_string = ax25_command_substitution(ioev.io, shlex.join(command))
+    #if command:
+    #    sh_cmd = ax25_command_substitution(ioev.io, shlex.join(command))
+    #    logger.info("spawn: {}".format(sh_cmd))
+    #    g_string = ("stdio(stderr-to-stdout)," if stderr else "stdio,") + sh_cmd
     #    if g_filter is None:
     #        g_filter = DEFAULT_FILTER
     if g_filter:
         g_string = "{},{}".format(g_filter, g_string)
+    logger.info("spawn: {!r}".format(g_string))
     return gensio.gensio(o, g_string, ioev)
 
 
@@ -196,6 +199,17 @@ class IOEvent:
             self.accev = None
 
 
+class RMSGatewayEvent(RMSGatewayLogin, IOEvent):
+
+    @property
+    def logger(self):
+        return logger
+
+    @property
+    def callsign(self):
+        return b"KF7HVM"
+
+
 class AccEvent:
     def __init__(self, command, stderr):
         self.ios = []
@@ -211,7 +225,7 @@ class AccEvent:
         if self.in_shutdown:
             # it will free automatically
             return
-        ioev = IOEvent(self)
+        ioev = RMSGatewayEvent(self)
         logger.info("accepted new connection: %r", io)
         ioev.io = io
         ioev.io2 = spawn_for(ioev, self.command, stderr=self.stderr)
