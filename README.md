@@ -21,23 +21,30 @@ alternatively, if you don't want a virtualenv,
 pip install --user gensio-modems
 ```
 
-## `varagate.py`
+## `vara`
 
 RMS/Winlink capable gateway for VARA and VARA FM
 
 ```
-python examples/varagate.py -l KF7HVM-10 --banner "gensio+vara experimental rms gateway" --gateway "rms,tcp,cms.winlink.org,8772"
+python gensio_modems.vara \
+    -l KF7HVM-10 \
+    --banner "gensio+vara experimental rms gateway" \
+    --gateway "rms,tcp,cms.winlink.org,8772"
 ```
 
-## `listen.py`
+## `ax25`
 
-a simple ax25-to-program proxy, useful for passing off to BBS or
+a simple ax25 listener-to-gensio proxy, useful for passing off to BBS or
 gateway software.
 
-### [`rmsgw`](https://github.com/nwdigitalradio/rmsgw) Winlink Gateway
+### Winlink RMS
 
 ```
-python -m gensio_modems.listen -l KF7HVM-10 -k tcp,localhost,8011 /usr/local/bin/rmsgw -l debug -P radio2 %U
+python -m gensio_modems.ax25 \
+    -l KF7HVM-10 \
+    -k tcp,localhost,8011 \
+    --banner "gensio+ax25 experimental rms gateway" \
+    --gateway "rms,tcp,cms.winlink.org,8772"
 ```
 
 #### _as a service_
@@ -51,24 +58,24 @@ BindsTo=direwolf@dw1.service
 RestartSec=5
 Restart=always
 User=rmsgw
-ExecStart=/home/rmsgw/.gensio/bin/python -m gensio_modems.listen -l N7DEM-12 \
-    /usr/local/bin/rmsgw -l debug -P dw1 %%U
+ExecStart=/home/rmsgw/.gensio/bin/python -m gensio_modems.ax25 \
+    -l N7DEM-12 \
+    --banner "gensio+ax25 experimental rms gateway" \
+    --gateway "rms,tcp,cms.winlink.org,8772"
 
 [Install]
 WantedBy=direwolf@dw1.service multi-user.target
 ```
-
-compat note: traditionally, `-P` would have referred to an ax25 port name, but
-it _really_ only points to a channel name in `rmsgw` `channels.xml` file.
-
-eventually, it should be possible to build rmsgw without linux ax25 libraries.
 
 ## `proxy.py`
 
 Expose an ax25 client connection via a telnet listener.
 
 ```
-python -m gensio_modems.proxy --mycall KF7HVM-1 -k tcp,localhost,8010 --listen tcp,localhost,8772
+python -m gensio_modems.proxy \
+    --mycall KF7HVM-1 \
+    -k tcp,localhost,8010 \
+    --listen tcp,localhost,8772
 ```
 
 In pat, connect via telnet to `pat:KF7HVM-10@localhost:8772`.
