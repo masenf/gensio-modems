@@ -84,7 +84,7 @@ class AX25ListenerEvent(ListenerEvent):
         if self.banner is not None:
             ioev.get_write_buffer(ioev.io).extend(f"{self.banner}\r\n".encode("utf-8"))
         ioev.io2 = spawn_for(ioev, self.spawn_gensio_str)
-        ioev.io2.open()
+        ioev.io2.open(ioev)
         io.write_cb_enable(True)
         io.read_cb_enable(True)
         return io
@@ -119,7 +119,7 @@ def main():
     args = parser.parse_args()
 
     AX25ListenerEvent.from_gensio_str(
-        gensio_listen_str=f"ax25(laddr={args.listen},extended=0),kiss,conacc,{args.kiss}",
+        gensio_str=f"ax25(laddr={args.listen},extended=0),kiss,conacc,{args.kiss}",
         spawn_gensio_str=args.gateway,
         banner=args.banner,
     ).wait()
