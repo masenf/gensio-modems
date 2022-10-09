@@ -7,13 +7,13 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gax25-utils"
-description = "python-based ham-radio / ax25 utilities built on the gensio ax25 stack."
+name = "gensio-modems"
+description = "python-based ham-radio modem utilities (ax25, kiss, vara) built using gensio"
 authors = [
     {name = "Masen Furer KF7HVM", email = "kf7hvm@0x26.net"},
 ]
 dependencies = [
-    "gensio >= 2.5.3",
+    "gensio-binary >= 2.5.5",
 ]
 readme = "README.md"
 classifiers = [
@@ -24,6 +24,6 @@ keywords=[
 dynamic = ["version"]
 
 [project.urls]
-Homepage = "https://github.com/masenf/gax25-utils"
+Homepage = "https://github.com/masenf/gensio-modems"
 
 [tool.setuptools_scm]

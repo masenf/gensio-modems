@@ -1,6 +1,6 @@
 import argparse
 
-from gax25.vara import VaraControlEvent
+from gensio_modems.vara import VaraControlEvent
 
 
 """

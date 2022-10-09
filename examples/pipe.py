@@ -1,6 +1,6 @@
 import gensio
 
-from gax25.gutils import PipeEvent, OSFUNCS
+from gensio_modems.gutils import PipeEvent, OSFUNCS
 
 
 p = PipeEvent()

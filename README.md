@@ -1,24 +1,24 @@
-# gax25-utils
+# gensio-modems
 
-python-based ham-radio / ax25 utilities based on the
-[gensio](https://github.com/cminyard/gensio) ax25 stack.
+python-based ham-radio modem utilities (ax25, kiss, vara) built using
+[gensio](https://github.com/cminyard/gensio).
 
 Currently enough functionality is provided to host a Winlink RMS
 gateway, and connect to it (and others) via `pat`
 telnet sessions.
 
-## Install `gax25-utils`
+## Install `gensio-modems`
 
 ```
 python3 -m venv ./.venv
 . .venv/bin/activate
-pip install -i https://test.pypi.org/simple/ gax25-utils
+pip install gensio-modems
 ```
 
 alternatively, if you don't want a virtualenv,
 
 ```
-pip install --user -i https://test.pypi.org/simple/ gax25-utils
+pip install --user gensio-modems
 ```
 
 ## `varagate.py`
@@ -37,7 +37,7 @@ gateway software.
 ### [`rmsgw`](https://github.com/nwdigitalradio/rmsgw) Winlink Gateway
 
 ```
-python -m gax25.listen -l KF7HVM-10 -k tcp,localhost,8011 /usr/local/bin/rmsgw -l debug -P radio2 %U
+python -m gensio_modems.listen -l KF7HVM-10 -k tcp,localhost,8011 /usr/local/bin/rmsgw -l debug -P radio2 %U
 ```
 
 #### _as a service_
@@ -51,7 +51,7 @@ BindsTo=direwolf@dw1.service
 RestartSec=5
 Restart=always
 User=rmsgw
-ExecStart=/home/rmsgw/.gensio/bin/python -m gax25.listen -l N7DEM-12 \
+ExecStart=/home/rmsgw/.gensio/bin/python -m gensio_modems.listen -l N7DEM-12 \
     /usr/local/bin/rmsgw -l debug -P dw1 %%U
 
 [Install]
@@ -68,7 +68,7 @@ eventually, it should be possible to build rmsgw without linux ax25 libraries.
 Expose an ax25 client connection via a telnet listener.
 
 ```
-python -m gax25.proxy --mycall KF7HVM-1 -k tcp,localhost,8010 --listen tcp,localhost,8772
+python -m gensio_modems.proxy --mycall KF7HVM-1 -k tcp,localhost,8010 --listen tcp,localhost,8772
 ```
 
 In pat, connect via telnet to `pat:KF7HVM-10@localhost:8772`.

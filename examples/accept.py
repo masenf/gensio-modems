@@ -1,6 +1,6 @@
 import gensio
 
-from gax25.gutils import ListenerEvent, OSFUNCS, PipeEvent
+from gensio_modems.gutils import ListenerEvent, OSFUNCS, PipeEvent
 
 
 class StdioPipeListener(ListenerEvent):
