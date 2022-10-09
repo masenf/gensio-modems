@@ -21,7 +21,7 @@ import gensio
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("gaxproxy")
 
-CRED_PROMPTS = [b"Callsign:\r\n", b"Password:\r\n"]
+CRED_PROMPTS = [b"Callsign:", b"Password:"]
 
 
 class GensioLogger:
@@ -73,6 +73,7 @@ class IOEvent:
         self._io = value
         if self._io is not None:
             self._io.set_cbs(self)
+            self.spawn_io2_when_ready()
 
     @property
     def io2(self):
@@ -111,6 +112,19 @@ class IOEvent:
             return self.bufB
         raise ValueError("Unknown io: {!r}".format(io))
 
+    def spawn_io2_when_ready(self):
+        if (
+            self.io2 is None
+            and len(self.creds) >= self.require_creds
+            and not self.in_close
+        ):
+            # once creds are received, spawn and connect the second endpoint
+            self.io2 = spawn_for(
+                ioev=self,
+                endpoint=replace_positional(self.accev.endpoint, *self.creds),
+            )
+            self.io2.open(self)
+
     def read_callback(self, io, err, data, auxdata):
         if err:
             self.log_for(io, "read: %s", err)
@@ -126,13 +140,7 @@ class IOEvent:
                     self.bufB.extend(CRED_PROMPTS[len(self.creds) % len(CRED_PROMPTS)])
             else:
                 self.get_read_buffer(io).extend(data)
-        if self.io2 is None and len(self.creds) >= self.require_creds and not self.in_close:
-            # once creds are received, spawn and connect the second endpoint
-            self.io2 = spawn_for(
-                ioev=self,
-                endpoint=replace_positional(self.accev.endpoint, *self.creds),
-            )
-            self.io2.open(self)
+        self.spawn_io2_when_ready()
         if self.bufA:
             self.io2.write_cb_enable(True)
         if self.bufB:
@@ -251,7 +259,10 @@ def main():
         "-l", "--listen", default="tcp,localhost,8772", help="gensio spec to listen on"
     )
     parser.add_argument(
-        "--require-creds", default=1, help="Prompt for 'credentials' on listener (can be replaced as %%n in --gateway")
+        "--require-creds",
+        default=1,
+        help="Prompt for 'credentials' on listener (can be replaced as %%n in --gateway",
+    )
     parser.add_argument(
         "-g",
         "--gateway",
@@ -272,7 +283,10 @@ def main():
     if not re.search(r"\badder=", endpoint_conf):
         endpoint_conf = f'addr="0,{args.gateway},{args.mycall}",' + endpoint_conf
 
-    accev = AccEvent(endpoint=f"ax25({endpoint_conf}),kiss,{args.kiss}", require_creds=int(args.require_creds))
+    accev = AccEvent(
+        endpoint=f"ax25({endpoint_conf}),kiss,{args.kiss}",
+        require_creds=int(args.require_creds),
+    )
     accev.acc = gensio.gensio_accepter(o, args.listen, accev)
     accev.acc.startup()
     accev.wait()
