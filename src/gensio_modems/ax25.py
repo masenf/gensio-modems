@@ -57,7 +57,7 @@ def spawn_for(ioev, gensio_str):
 class RMSPipeEvent(RMSGatewayLogin, PipeEvent):
     @property
     def callsign(self):
-        return ax25_local_addr(self.io)
+        return ax25_remote_addr(self.io).partition("-")[0].encode("utf-8")
 
 
 class AX25ListenerEvent(ListenerEvent):
@@ -70,7 +70,7 @@ class AX25ListenerEvent(ListenerEvent):
 
     @classmethod
     def from_gensio_str(cls, gensio_str, **kwargs):
-        accev = AX25ListenerEvent(**kwargs)
+        accev = cls(**kwargs)
         accev.acc = gensio.gensio_accepter(OSFUNCS, gensio_str, accev)
         accev.acc.startup()
         return accev
