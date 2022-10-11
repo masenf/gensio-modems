@@ -1,0 +1,11 @@
+[Unit]
+Description=Show live-logs for hybrid gateway services.
+After=graphical-session.target
+
+[Service]
+Environment=DISPLAY=':0.0'
+ExecStart=/usr/bin/x-terminal-emulator -e "journalctl --user -f -u varafm -u 'varagate@*' -u direwolf -u 'diregate@*' -u 'socat@*' -u 'rigctlcom@*'"
+Type=oneshot
+
+[Install]
+WantedBy=default.target

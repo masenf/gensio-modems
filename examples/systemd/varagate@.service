@@ -1,0 +1,15 @@
+[Unit]
+Description=VARA RMS Gateway for %i
+BindsTo=varafm.service
+After=varafm.service
+Conflicts=winlink.service
+
+[Service]
+ExecStart=/usr/bin/env python3 -m gensio_modems.vara \
+    -l "%i" \
+    --banner "%i gensio+vara experimental RMS gateway"
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=varafm.service

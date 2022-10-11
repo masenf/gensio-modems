@@ -1,0 +1,11 @@
+[Unit]
+Description=Direwolf AFSK Modem
+
+[Service]
+ExecStart=/usr/bin/direwolf -c /opt/direwolf.conf
+ExecStartPost=sleep 5
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=default.target
