@@ -1,0 +1,20 @@
+[Unit]
+Description=CM108 / Virtual TS-2000 PTT CAT Control (%i)
+BindsTo=socat@%i.service
+After=socat@%i.service
+Before=varafm.service
+
+[Service]
+Environment=COM=com6 WINEPREFIX=/opt/wine-winlink
+ExecStart=/usr/bin/env bash -c \
+    "exec rigctlcom -P CM108 -p /dev/%i -R $(readlink /tmp/cm108-%i) -S 57600"
+ExecStartPost=/usr/bin/env bash -c \
+    'while [[ -z "$(readlink /tmp/vts2000-%i)" ]]; do \
+        sleep 0.1; \
+    done; \
+    ln -fs $(readlink /tmp/vts2000-%i) $WINEPREFIX/dosdevices/$COM'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

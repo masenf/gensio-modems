@@ -1,0 +1,12 @@
+[Unit]
+Description=Virtual Serial Port Concatenator (%i)
+
+[Service]
+ExecStart=/usr/bin/socat -d -d \
+    pty,raw,echo=0,link=/tmp/cm108-%i \
+    pty,raw,echo=0,link=/tmp/vts2000-%i 
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

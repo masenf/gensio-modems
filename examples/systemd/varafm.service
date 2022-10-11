@@ -1,0 +1,23 @@
+[Unit]
+Description=VARA FM Modem
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Environment=DISPLAY=':0.0' WINEPREFIX=/opt/wine-winlink
+
+ExecStart=/usr/bin/wine "${WINEPREFIX}/drive_c/VARA FM/VARAFM.exe"
+# actually give VARA a chance to start listening
+ExecStartPost=sleep 30
+
+ExecStop=/usr/bin/kill -TERM $MAINPID
+# actually give wine services a chance to stop
+ExecStop=sleep 5
+# Then bring in the KILL hammer for winedevice.exe and others
+KillSignal=SIGKILL
+
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=default.target
