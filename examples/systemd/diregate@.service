@@ -4,7 +4,7 @@ BindsTo=direwolf.service
 After=direwolf.service
 
 [Service]
-ExecStart=/usr/bin/env python3 -m gensio_modems.ax25 \
+ExecStart=/usr/bin/python3 -m gensio_modems.ax25 \
     -l %i \
     -g rms,tcp,cms.winlink.org,8772 \
     --banner "%i gensio+ax25 experimental RMS gateway"

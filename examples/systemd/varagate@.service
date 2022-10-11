@@ -5,7 +5,7 @@ After=varafm.service
 Conflicts=winlink.service
 
 [Service]
-ExecStart=/usr/bin/env python3 -m gensio_modems.vara \
+ExecStart=/usr/bin/python3 -m gensio_modems.vara \
     -l "%i" \
     --banner "%i gensio+vara experimental RMS gateway"
 Restart=always
