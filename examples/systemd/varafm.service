@@ -9,6 +9,7 @@ Environment=DISPLAY=':0.0' WINEPREFIX=/opt/wine-winlink
 ExecStart=/usr/bin/wine "${WINEPREFIX}/drive_c/VARA FM/VARAFM.exe"
 # actually give VARA a chance to start listening
 ExecStartPost=sleep 30
+ExecStartPost=/home/packet/set-wine-output.sh
 
 ExecStop=/usr/bin/kill -TERM $MAINPID
 # actually give wine services a chance to stop
