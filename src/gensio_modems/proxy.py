@@ -21,7 +21,7 @@ import gensio
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("gaxproxy")
 
-CRED_PROMPTS = [b"Callsign:", b"Password:"]
+CRED_PROMPTS = [b"Callsign :\r", b"Password :\r"]
 
 
 class GensioLogger:
