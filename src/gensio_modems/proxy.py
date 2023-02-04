@@ -176,10 +176,12 @@ class IOEvent:
     def open_done(self, io, err):
         if err:
             self.log_for(io, "open error: %s", err)
-            if self.io is not None:
-                self.io.close(self)
-            if self.io2 is not None:
-                self.io2.close(self)
+            for io in [self.io, self.io2]:
+                if io is not None:
+                    try:
+                        io.close(self)
+                    except Exception:
+                        pass  # ignore close errors for unestablished sessions
             return
         self.log_for(io, "Opened gensio: %s", io)
         io.write_cb_enable(True)

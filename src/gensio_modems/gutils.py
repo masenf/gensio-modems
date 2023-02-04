@@ -40,6 +40,7 @@ class IOEvent:
         # io writes from bufB
         self.bufB = array.array("B")
         self.in_close = False  # true if either gensio is down or going down
+        self.in_error = False  # true if self._io had an error
         self.waiter = gensio.waiter(OSFUNCS)
 
     @property
@@ -67,8 +68,9 @@ class IOEvent:
 
     def close(self, io=None):
         self.in_close = True
-        if self.io is not None:
+        if self.io is not None and not self.in_error:
             # with in_close=True, write_callback will close io after buffer is drained
+            # (unless there is an error)
             self.io.write_cb_enable(True)
         # if the caller gave us an IO, close it now
         if io is not None:
@@ -83,9 +85,11 @@ class IOEvent:
     def read_callback(self, io, err, data, auxdata):
         if err:
             self.log_for(io, "read: %s", err)
-            if err != "Remote end closed connection":
+            if "remote end closed connection" not in str(err).lower():
                 self.log_for(io, "read error: %s", err)
+            self.in_error = True
             self.close(io)
+        if self.in_error:
             return 0
         if data:
             self.log_for(io, "read_callback: data=%r", data)
@@ -101,19 +105,20 @@ class IOEvent:
 
     def write_callback(self, io):
         buf = self.get_write_buffer(io)
-        if buf:
+        if buf and not self.in_error:
             try:
                 count = io.write(buf.tobytes(), None)
             except Exception as e:
-                self.log_for(io, "write: %s", e)
-                if str(e) != "Remote end closed connection":
+                self.log_for(io, "write: %s (in_error=%s, in_close=%s, buf=%s)", e, self.in_error, self.in_close, buf)
+                if "remote end closed connection" not in str(err).lower():
                     self.log_for(io, "write error: %s", e)
+                self.in_error = True
+                buf[:] = []  # reset the buffer here to avoid infinite loop on connection drop
                 self.close(io)
                 return
             self.log_for(io, "write_callback: data=%s", buf[:count].tobytes())
             buf[:] = buf[count:]
-
-        if not buf:
+        else:
             io.write_cb_enable(False)
             if self.in_close:
                 self.close(io)
@@ -175,7 +180,7 @@ class PipeEvent(IOEvent):
 
     def close(self, io=None):
         super().close(io)
-        if self.io2 is not None:
+        if self.io2 is not None and not self.in_error:
             self.io2.write_cb_enable(True)
 
     def get_read_buffer(self, io):
