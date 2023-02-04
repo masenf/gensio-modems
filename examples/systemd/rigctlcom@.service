@@ -12,7 +12,8 @@ ExecStartPost=/usr/bin/env bash -c \
     'while [[ -z "$(readlink /tmp/vts2000-%i)" ]]; do \
         sleep 0.1; \
     done; \
-    ln -fs $(readlink /tmp/vts2000-%i) $WINEPREFIX/dosdevices/$COM'
+    rm -f "$WINEPREFIX/dosdevices/$COM";
+    ln -fs $(readlink /tmp/vts2000-%i) "$WINEPREFIX/dosdevices/$COM"'
 Restart=always
 RestartSec=10
 
