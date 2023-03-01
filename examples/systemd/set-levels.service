@@ -1,0 +1,11 @@
+[Unit]
+Description=Set soundcard levels for services
+After=direwolf.service varafm.service
+BindsTo=direwolf.service varafm.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash /home/packet/set-levels.sh
+
+[Install]
+WantedBy=direwolf.service varafm.service
