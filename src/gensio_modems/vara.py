@@ -145,6 +145,7 @@ class VaraControlEvent(IOEvent):
             self.connected = None
             if self.data_pipe is not None:
                 self.data_pipe.reset_channel()
+            self.close()
             self.logger.info(f"Disconnected from {disconnected_from}")
         elif command == "wrong":
             self.log_for(self.io, f"WRONG!", level=logging.INFO)
